@@ -1,6 +1,7 @@
 // services/background_task.mjs
 
 import * as repo from "../repositories/socialMediaPost.repo.mjs";
+import { postTweetWithImage } from "../ximg.mjs";
 import { postTweet } from "../xsend.mjs";
 
 
@@ -14,9 +15,9 @@ export function startBackgroundTask() {
           now.getTime() + 5000
         );
 
-      console.log(
-        `⏰ Checking scheduled posts at ${now.toLocaleString()}`
-      );
+      // console.log(
+      //   `⏰ Checking scheduled posts at ${now.toLocaleString()}`
+      // );
 
       // 🔍 Find scheduled posts
       const posts =
@@ -26,9 +27,9 @@ export function startBackgroundTask() {
         );
 
       if (!posts.length) {
-        console.log(
-          "❌ No scheduled posts found"
-        );
+        // console.log(
+        //   "❌ No scheduled posts found"
+        // );
 
 
 
@@ -40,9 +41,18 @@ export function startBackgroundTask() {
         console.log(
           "🚀 Scheduled post triggered"
         );
-        await postTweet({
+//         await postTweet({
+//   text: post.text,
+// });
+
+ console.log({
+          id: post.id,
+          text: post.text,
+          image: post.image,})
+await postTweetWithImage({
   text: post.text,
-});
+  image: post.image,
+})
 
         console.log({
           id: post.id,

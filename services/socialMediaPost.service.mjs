@@ -1,6 +1,7 @@
 // services/socialMediaPost.service.mjs
 
 import * as repo from "../repositories/socialMediaPost.repo.mjs";
+import { postTweetWithImage } from "../ximg.mjs";
 
 // ➕ Create
 export const createSocialMediaPost = async (
@@ -45,6 +46,20 @@ export const createSocialMediaPost = async (
       message: "ID already exists",
     };
   }
+
+  // await postTweetWithImage({
+  //   text: text,
+  //   image: image,
+  // })
+  // console.log("ID\n", 
+  // id,
+  //   "\text\n",text,
+  //  "\nImage\n", image,
+  //  "\nURL\n", url,
+  //   description,
+  //   scheduleTimeAndDate,
+
+  // )
 
   const data = await repo.createRepo({
     id,
