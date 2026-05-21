@@ -1,20 +1,15 @@
-// services/background_task.mjs
-
+import { postFacebookImage } from "../facebook/facebookImagePost.service.mjs";
 import * as repo from "../repositories/socialMediaPost.repo.mjs";
 import { postTweetWithImage } from "../ximg.mjs";
 import { postTweet } from "../xsend.mjs";
-
-
 export function startBackgroundTask() {
   setInterval(async () => {
     try {
       const now = new Date();
-
       const nextFiveSeconds =
         new Date(
           now.getTime() + 5000
         );
-
       // console.log(
       //   `⏰ Checking scheduled posts at ${now.toLocaleString()}`
       // );
@@ -30,9 +25,6 @@ export function startBackgroundTask() {
         // console.log(
         //   "❌ No scheduled posts found"
         // );
-
-
-
         return;
       }
 
@@ -50,10 +42,29 @@ export function startBackgroundTask() {
           id: post.id,
           text: post.text,
           image: post.image,})
+//twitter post with image
+try{
 await postTweetWithImage({
   text: post.text,
   image: post.image,
 })
+}catch(error){
+  console.log("Twitter post error:",error)
+}
+
+//facebook post 
+
+try{
+await postFacebookImage({
+  caption: post.text,
+  imageUrl:post.image,
+  
+})
+}catch(error){
+console.log("Facebook post error:",error)
+}
+
+
 
         console.log({
           id: post.id,

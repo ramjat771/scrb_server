@@ -3,13 +3,33 @@
 import { Router } from "express";
 
 import * as controller from "../controller/socialMediaPost.controller.mjs";
+import {
+  upload
+} from "../middlewares/multer.mjs"
+
+import {
+  filesToBody,
+} from "../middlewares/file-to-body.middleware.mjs";
 
 const router = Router();
 
 // ➕ Create
 router.post(
   "/",
-  controller.createSocialMediaPostController
+
+    // ✅ Upload Image
+  upload.fields([
+    {
+      name: "image",
+      maxCount: 1,
+    },
+  ]),
+
+  // ✅ Convert File URL To Body
+  filesToBody,
+
+  controller.createSocialMediaPostController,
+  
 );
 
 // 📄 Get All
