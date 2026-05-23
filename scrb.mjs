@@ -7,7 +7,6 @@ import { Server } from "socket.io";
 import { startBackgroundTask } from "./services/background_task.mjs";
 import { postFacebookImage } from "./facebook/facebookImagePost.service.mjs";
 async function startServer() {
-
   const server = http.createServer(app);
   const io = new Server(server, {
     path: "/socket",

@@ -1,4 +1,5 @@
 import { postFacebookImage } from "../facebook/facebookImagePost.service.mjs";
+import { postInstagramImage } from "../instagram/instagramPost.service.mjs";
 import * as repo from "../repositories/socialMediaPost.repo.mjs";
 import { postTweetWithImage } from "../ximg.mjs";
 import { postTweet } from "../xsend.mjs";
@@ -63,6 +64,20 @@ await postFacebookImage({
 }catch(error){
 console.log("Facebook post error:",error)
 }
+
+//Instagram post
+try{
+
+postInstagramImage
+({
+  caption:post.text,
+  imageUrl:post.image,
+})
+
+}catch(error){
+  console.log("Instagram post error:",error)
+}
+
 
 
 
