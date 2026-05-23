@@ -1,13 +1,9 @@
 // services/instagramImagePost.service.mjs
-
 import dotenv from "dotenv";
 import axios from "axios";
 import { getFacebookPageAccessToken } from "../facebook/facebookPage.token.mjs";
-
 dotenv.config();
-
 const IG_USER_ID = process.env.IG_USER_ID;
-
 // 🚀 Instagram Image Post
 export const postInstagramImage = async ({
   caption,
@@ -15,7 +11,6 @@ export const postInstagramImage = async ({
 }) => {
   const PAGE_ACCESS_TOKEN =
     await getFacebookPageAccessToken();
-
   try {
     // =========================
     // STEP 1: Create Media Container
