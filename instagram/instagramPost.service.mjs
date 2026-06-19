@@ -36,7 +36,9 @@ export const postInstagramImage = async ({
 
     const creationId =
       mediaResponse.data.id;
-
+await new Promise((resolve) =>
+  setTimeout(resolve, 10000)
+);
     // =========================
     // STEP 2: Publish Media
     // =========================
