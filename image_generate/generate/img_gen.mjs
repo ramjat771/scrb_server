@@ -1,4 +1,11 @@
+// img_gen.mjs
+
 import { createCanvas } from "canvas";
+import { THEMES } from "./themes.mjs";
+import { BADGES } from "./badges.mjs";
+import { CARD_COLORS } from "./card_colors.mjs";
+import { drawWrappedText } from "./drawWrappedText.mjs";
+import { roundRect } from "./roundRect.mjs";
 
 export function generateImageBuffer(
   question,
@@ -19,7 +26,27 @@ export function generateImageBuffer(
     canvas.getContext("2d");
 
   // =========================
-  // Background
+  // RANDOM THEME
+  // =========================
+
+  const theme =
+    THEMES[
+      Math.floor(
+        Math.random() *
+          THEMES.length
+      )
+    ];
+
+  const badge =
+    BADGES[
+      Math.floor(
+        Math.random() *
+          BADGES.length
+      )
+    ];
+
+  // =========================
+  // BACKGROUND
   // =========================
 
   const bg =
@@ -30,9 +57,20 @@ export function generateImageBuffer(
       height
     );
 
-  bg.addColorStop(0, "#0F172A");
-  bg.addColorStop(0.5, "#312E81");
-  bg.addColorStop(1, "#581C87");
+  bg.addColorStop(
+    0,
+    theme.bg1
+  );
+
+  bg.addColorStop(
+    0.5,
+    theme.bg2
+  );
+
+  bg.addColorStop(
+    1,
+    theme.bg3
+  );
 
   ctx.fillStyle = bg;
   ctx.fillRect(
@@ -42,29 +80,32 @@ export function generateImageBuffer(
     height
   );
 
-  // Golden Glow
+  // =========================
+  // GLOW EFFECT
+  // =========================
 
   const glow =
     ctx.createRadialGradient(
       width / 2,
-      250,
+      220,
       50,
       width / 2,
-      250,
+      220,
       500
     );
 
   glow.addColorStop(
     0,
-    "rgba(255,215,0,0.2)"
+    `${theme.accent}55`
   );
 
   glow.addColorStop(
     1,
-    "rgba(255,215,0,0)"
+    "transparent"
   );
 
   ctx.fillStyle = glow;
+
   ctx.fillRect(
     0,
     0,
@@ -73,59 +114,91 @@ export function generateImageBuffer(
   );
 
   // =========================
-  // Borders
+  // BORDER
   // =========================
 
   ctx.strokeStyle =
-    "#FFD700";
+    theme.accent;
+
   ctx.lineWidth = 10;
 
   roundRect(
     ctx,
-    30,
-    30,
-    width - 60,
-    height - 60,
+    25,
+    25,
+    width - 50,
+    height - 50,
     40
   );
 
   ctx.stroke();
 
   ctx.strokeStyle =
-    "rgba(255,255,255,0.3)";
+    "rgba(255,255,255,0.15)";
+
   ctx.lineWidth = 2;
 
   roundRect(
     ctx,
-    50,
-    50,
-    width - 100,
-    height - 100,
+    45,
+    45,
+    width - 90,
+    height - 90,
     30
   );
 
   ctx.stroke();
 
   // =========================
-  // Header
+  // BADGE
   // =========================
 
-  ctx.textAlign = "center";
-
   ctx.fillStyle =
-    "#FFD700";
+    theme.accent;
+
+  roundRect(
+    ctx,
+    760,
+    60,
+    250,
+    60,
+    18
+  );
+
+  ctx.fill();
+
+  ctx.fillStyle = "#000";
+
+  ctx.textAlign =
+    "center";
 
   ctx.font =
-    "bold 50px Arial";
+    "bold 26px Arial";
 
   ctx.fillText(
-    "🧠 TODAY'S CHALLENGE",
-    width / 2,
-    120
+    badge,
+    885,
+    100
   );
 
   // =========================
-  // Question Card
+  // HEADER
+  // =========================
+
+  ctx.fillStyle =
+    theme.accent;
+
+  ctx.font =
+    "bold 54px Arial";
+
+  ctx.fillText(
+    theme.title,
+    width / 2,
+    150
+  );
+
+  // =========================
+  // QUESTION BOX
   // =========================
 
   ctx.fillStyle =
@@ -133,39 +206,36 @@ export function generateImageBuffer(
 
   roundRect(
     ctx,
-    70,
-    180,
-    width - 140,
-    260,
-    30
+    60,
+    190,
+    width - 120,
+    250,
+    35
   );
 
   ctx.fill();
 
   ctx.strokeStyle =
-    "rgba(255,255,255,0.2)";
+    "rgba(255,255,255,0.15)";
 
   ctx.lineWidth = 2;
 
   ctx.stroke();
 
   // =========================
-  // Question
+  // QUESTION
   // =========================
 
   ctx.fillStyle =
     "#FFFFFF";
 
   ctx.font =
-    "bold 82px Arial";
-
-  ctx.textAlign =
-    "center";
+    "bold 80px Arial";
 
   ctx.shadowColor =
     "rgba(0,0,0,0.7)";
 
-  ctx.shadowBlur = 25;
+  ctx.shadowBlur = 30;
 
   drawWrappedText(
     ctx,
@@ -173,13 +243,13 @@ export function generateImageBuffer(
     width / 2,
     300,
     850,
-    95
+    90
   );
 
   ctx.shadowBlur = 0;
 
   // =========================
-  // Options
+  // OPTIONS
   // =========================
 
   const options = [
@@ -189,9 +259,8 @@ export function generateImageBuffer(
     `D) ${optionD}`,
   ];
 
-  const optionWidth = 400;
-  const optionHeight = 120;
-  const startY = 520;
+  const optionWidth = 410;
+  const optionHeight = 125;
 
   options.forEach(
     (option, index) => {
@@ -201,14 +270,40 @@ export function generateImageBuffer(
       const col = index % 2;
 
       const x =
-        80 + col * 470;
+        80 + col * 460;
 
       const y =
-        startY +
+        510 +
         row * 180;
 
+      const colors =
+        CARD_COLORS[
+          Math.floor(
+            Math.random() *
+              CARD_COLORS.length
+          )
+        ];
+
+      const cardBg =
+        ctx.createLinearGradient(
+          x,
+          y,
+          x + optionWidth,
+          y + optionHeight
+        );
+
+      cardBg.addColorStop(
+        0,
+        colors[0]
+      );
+
+      cardBg.addColorStop(
+        1,
+        colors[1]
+      );
+
       ctx.fillStyle =
-        "rgba(255,255,255,0.10)";
+        cardBg;
 
       roundRect(
         ctx,
@@ -241,25 +336,53 @@ export function generateImageBuffer(
         option,
         x +
           optionWidth / 2,
-        y + 75
+        y + 78
       );
     }
   );
 
   // =========================
-  // Footer
+  // DECORATIVE CIRCLES
+  // =========================
+
+  for (
+    let i = 0;
+    i < 25;
+    i++
+  ) {
+    ctx.beginPath();
+
+    ctx.fillStyle =
+      "rgba(255,255,255,0.06)";
+
+    ctx.arc(
+      Math.random() *
+        width,
+      Math.random() *
+        height,
+      Math.random() *
+        12,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+  }
+
+  // =========================
+  // FOOTER
   // =========================
 
   ctx.fillStyle =
-    "#FFD700";
+    theme.accent;
 
   ctx.font =
-    "bold 42px Arial";
+    "bold 40px Arial";
 
   ctx.fillText(
     "🔥 Can You Solve It?",
     width / 2,
-    970
+    960
   );
 
   ctx.fillStyle =
@@ -271,140 +394,10 @@ export function generateImageBuffer(
   ctx.fillText(
     "Comment Your Answer Below 👇",
     width / 2,
-    1020
+    1010
   );
 
   return canvas.toBuffer(
     "image/png"
   );
-}
-
-// =========================
-// Wrapped Text
-// =========================
-
-function drawWrappedText(
-  ctx,
-  text,
-  centerX,
-  startY,
-  maxWidth,
-  lineHeight
-) {
-  const words =
-    text.split(" ");
-
-  let line = "";
-
-  const lines = [];
-
-  for (const word of words) {
-    const testLine =
-      line + word + " ";
-
-    const width =
-      ctx.measureText(
-        testLine
-      ).width;
-
-    if (
-      width > maxWidth &&
-      line.length > 0
-    ) {
-      lines.push(
-        line.trim()
-      );
-
-      line =
-        word + " ";
-    } else {
-      line = testLine;
-    }
-  }
-
-  lines.push(
-    line.trim()
-  );
-
-  lines.forEach(
-    (currentLine, index) => {
-      ctx.fillText(
-        currentLine,
-        centerX,
-        startY +
-          index *
-            lineHeight
-      );
-    }
-  );
-}
-
-// =========================
-// Rounded Rectangle
-// =========================
-
-function roundRect(
-  ctx,
-  x,
-  y,
-  width,
-  height,
-  radius
-) {
-  ctx.beginPath();
-
-  ctx.moveTo(
-    x + radius,
-    y
-  );
-
-  ctx.lineTo(
-    x + width - radius,
-    y
-  );
-
-  ctx.quadraticCurveTo(
-    x + width,
-    y,
-    x + width,
-    y + radius
-  );
-
-  ctx.lineTo(
-    x + width,
-    y + height - radius
-  );
-
-  ctx.quadraticCurveTo(
-    x + width,
-    y + height,
-    x + width - radius,
-    y + height
-  );
-
-  ctx.lineTo(
-    x + radius,
-    y + height
-  );
-
-  ctx.quadraticCurveTo(
-    x,
-    y + height,
-    x,
-    y + height - radius
-  );
-
-  ctx.lineTo(
-    x,
-    y + radius
-  );
-
-  ctx.quadraticCurveTo(
-    x,
-    y,
-    x + radius,
-    y
-  );
-
-  ctx.closePath();
 }

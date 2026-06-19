@@ -1,7 +1,8 @@
 import {getQuestion} from "../image_generate/math.mjs"
-import {generateImageBuffer} from "../image_generate/img_gen.mjs"
+import {generateImageBuffer} from "../image_generate/generate/img_gen.mjs"
 import {uploadBufferToCloudinary} from "../image_generate/upload_to_server.mjs"
 import {postInstagramImage} from "../instagram/instagramPost.service.mjs"
+import {generateCaption} from "../image_generate/caption.mjs"
 export function startBackgroundTask() {
   const runTask = async () => {
     try {
@@ -37,7 +38,7 @@ export function startBackgroundTask() {
 
       try {
         await postInstagramImage({
-          caption: "",
+          caption: generateCaption(),
           imageUrl:
             uploadResult.secure_url,
         });
