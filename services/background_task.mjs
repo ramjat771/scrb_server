@@ -1,110 +1,55 @@
-import { postFacebookImage } from "../facebook/facebookImagePost.service.mjs";
-import { postInstagramImage } from "../instagram/instagramPost.service.mjs";
-import * as repo from "../repositories/socialMediaPost.repo.mjs";
-import { postTweetWithImage } from "../ximg.mjs";
-import { postTweet } from "../xsend.mjs";
+import {getQuestion} from "../image_generate/math.mjs"
+import {generateImageBuffer} from "../image_generate/img_gen.mjs"
+import {uploadBufferToCloudinary} from "../image_generate/upload_to_server.mjs"
+import {postInstagramImage} from "../instagram/instagramPost.service.mjs"
 export function startBackgroundTask() {
-  setInterval(async () => {
+  const runTask = async () => {
     try {
-      const now = new Date();
-      const nextFiveSeconds =
-        new Date(
-          now.getTime() + 5000
+    
+
+      const {
+        question,
+        optionA,
+        optionB,
+        optionC,
+        optionD,
+      } = getQuestion();
+
+      const imageBuffer =
+        generateImageBuffer(
+          question,
+          optionA,
+          optionB,
+          optionC,
+          optionD
         );
-      // console.log(
-      //   `⏰ Checking scheduled posts at ${now.toLocaleString()}`
-      // );
 
-      // 🔍 Find scheduled posts
-      const posts =
-        await repo.getPendingPostsRepo(
-          now,
-          nextFiveSeconds
+      const uploadResult =
+        await uploadBufferToCloudinary(
+          imageBuffer,
+          "social-post"
         );
 
-      if (!posts.length) {
-        // console.log(
-        //   "❌ No scheduled posts found"
-        // );
-        return;
-      }
+      console.log(
+        "✅ Uploaded:",
+        uploadResult.secure_url
+      );
 
-      // 🔁 Loop posts
-      for (const post of posts) {
-        console.log(
-          "🚀 Scheduled post triggered"
-        );
-        
-//         await postTweet({
-//   text: post.text,
-// });
-
- console.log({
-          id: post.id,
-          text: post.text,
-          image: post.image,})
-//twitter post with image
-try{
-await postTweetWithImage({
-  text: post.text,
-  image: post.image,
-})
-}catch(error){
-  console.log("Twitter post error:",error)
-}
-
-//facebook post 
-
-try{
-await postFacebookImage({
-  caption: post.text,
-  imageUrl:post.image,
-  
-})
-}catch(error){
-console.log("Facebook post error:",error)
-}
-
-//Instagram post
-try{
-
-postInstagramImage
-({
-  caption:post.text,
-  imageUrl:post.image,
-})
-
-}catch(error){
-  console.log("Instagram post error:",error)
-}
-
-
-
-
-        console.log({
-          id: post.id,
-          text: post.text,
-          image: post.image,
-          url: post.url,
-          description:
-            post.description,
-          scheduleTimeAndDate:
-            post.scheduleTimeAndDate,
+      try {
+        await postInstagramImage({
+          caption: "",
+          imageUrl:
+            uploadResult.secure_url,
         });
 
-
-        // ✅ Mark Processed
-        await repo.markProcessedRepo(
-          post.id
-        );
-
         console.log(
-          `✅ Completed: ${post.id}`
+          "✅ Instagram Posted"
         );
-
-
-
-
+      } catch (error) {
+        console.log(
+          "Instagram post error:",
+          error
+        );
       }
     } catch (error) {
       console.log(
@@ -112,5 +57,26 @@ postInstagramImage
         error
       );
     }
-  }, 5000);
+
+    // Random 30–90 minutes
+    const nextMinutes =
+      30 +
+      Math.floor(
+        Math.random() * 61
+      );
+
+    console.log(
+      `⏰ Next post in ${nextMinutes} minutes`
+    );
+
+    setTimeout(
+      runTask,
+      nextMinutes *
+        60 *
+        1000
+    );
+  };
+
+  // First run immediately
+  runTask();
 }

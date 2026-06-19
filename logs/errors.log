@@ -51,3 +51,5 @@
 [5/5/2026, 10:49:29 am] Assignment to constant variable. at updateMatchURL (file:///Users/sunitaqsunita/development/nodejs_project/cricket_server/services/liveMatchService.mjs:12:7)
 [5/5/2026, 4:01:40 pm] Payment validation failed: id: Path `id` is required. at model.validate (/Users/sunitaqsunita/development/nodejs_project/cricket_server/node_modules/mongoose/lib/document.js:2864:36)
 [5/5/2026, 4:02:49 pm] Expected double-quoted property name in JSON at position 41 (line 5 column 1) at JSON.parse (<anonymous>)[18/5/2026, 12:29:00 pm] Cannot destructure property 'id' of 'undefined' as it is undefined. at Module.createSocialMediaPost (file:///Users/sunitaqsunita/development/python/pdf_filter/services/socialMediaPost.service.mjs:7:3)
+[24/5/2026, 7:18:09 pm] Invalid input at Sharp (/Users/sunitaqsunita/aws/scrb/scrb_server/node_modules/sharp/lib/constructor.js:214:11)
+[24/5/2026, 7:18:15 pm] Invalid input at Sharp (/Users/sunitaqsunita/aws/scrb/scrb_server/node_modules/sharp/lib/constructor.js:214:11)
