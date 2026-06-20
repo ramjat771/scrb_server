@@ -3,7 +3,7 @@ import { generateImageBuffer } from "../image_generate/generate/img_gen.mjs";
 import { uploadBufferToCloudinary } from "../image_generate/upload_to_server.mjs";
 import { postInstagramImage } from "../instagram/instagramPost.service.mjs";
 import { generateCaption } from "../image_generate/caption.mjs";
-
+import { getIndianDateTime } from "../utils/get_indiatime.mjs";
 async function createPost() {
   try {
     const {
@@ -36,15 +36,13 @@ async function createPost() {
 
     const result =
       await postInstagramImage({
-        caption: generateCaption(),
+        caption: `${getIndianDateTime()}     ${generateCaption()}`,
         imageUrl:
           uploadResult.secure_url,
       });
 
     if (result.success) {
-      console.log(
-        "✅ Instagram Posted"
-      );
+      console.log("✅ Instagram Posted");
     } else {
       console.log(
         "❌ Instagram Failed",
@@ -57,19 +55,34 @@ async function createPost() {
       error
     );
   }
+
+  scheduleNextPost();
+}
+
+function scheduleNextPost() {
+  const minMinutes = 20;
+  const maxMinutes = 90;
+
+  const randomMinutes =
+    Math.floor(
+      Math.random() *
+        (maxMinutes - minMinutes + 1)
+    ) + minMinutes;
+
+  console.log(
+    `⏰ Next post in ${randomMinutes} minutes`
+  );
+
+  setTimeout(
+    createPost,
+    randomMinutes * 60 * 1000
+  );
 }
 
 export function startBackgroundTask() {
-  // First post immediately
-  createPost();
-
-  // Then every 55 minutes
-  setInterval(
-    createPost,
-    55 * 60 * 1000
-  );
-
   console.log(
-    "🚀 Auto posting started (every 55 minutes)"
+    "🚀 Auto posting started"
   );
+
+  createPost();
 }

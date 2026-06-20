@@ -63,7 +63,7 @@ export const getQuestion = () => {
     ];
 
   return {
-    question: `${emoji} ${expression} = ?`,
+    question: `${expression} = ?`,
     optionA: options[0],
     optionB: options[1],
     optionC: options[2],
