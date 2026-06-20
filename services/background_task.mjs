@@ -4,8 +4,49 @@ import { uploadBufferToCloudinary } from "../image_generate/upload_to_server.mjs
 import { postInstagramImage } from "../instagram/instagramPost.service.mjs";
 import { generateCaption } from "../image_generate/caption.mjs";
 import { getIndianDateTime } from "../utils/get_indiatime.mjs";
+
+let nextPostTime = 0;
+let nextPostTimeString = "";
+
+function generateNextSchedule() {
+  const minMinutes = 10;
+  const maxMinutes = 50;
+
+  const randomMinutes =
+    Math.floor(
+      Math.random() *
+        (maxMinutes - minMinutes + 1)
+    ) + minMinutes;
+
+  nextPostTime =
+    Date.now() +
+    randomMinutes * 60 * 1000;
+
+  nextPostTimeString =
+    new Date(nextPostTime).toLocaleString(
+      "en-IN",
+      {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }
+    );
+
+  console.log(
+    `⏰ Next post scheduled at ${nextPostTimeString} IST`
+  );
+
+  return randomMinutes;
+}
+
 async function createPost() {
   try {
+    console.log("📤 Starting post...");
+
     const {
       question,
       optionA,
@@ -34,15 +75,31 @@ async function createPost() {
       uploadResult.secure_url
     );
 
+    // Schedule next post BEFORE posting
+    const randomMinutes =
+      generateNextSchedule();
+
+    const caption = `
+${getIndianDateTime()}
+
+${generateCaption()}
+
+⏭ Next Challenge:
+${nextPostTimeString} IST
+(~${randomMinutes} min)
+`;
+
     const result =
       await postInstagramImage({
-        caption: `${getIndianDateTime()}     ${generateCaption()}`,
+        caption,
         imageUrl:
           uploadResult.secure_url,
       });
 
     if (result.success) {
-      console.log("✅ Instagram Posted");
+      console.log(
+        "✅ Instagram Posted"
+      );
     } else {
       console.log(
         "❌ Instagram Failed",
@@ -56,27 +113,36 @@ async function createPost() {
     );
   }
 
-  scheduleNextPost();
-}
-
-function scheduleNextPost() {
-  const minMinutes = 20;
-  const maxMinutes = 90;
-
-  const randomMinutes =
-    Math.floor(
-      Math.random() *
-        (maxMinutes - minMinutes + 1)
-    ) + minMinutes;
-
-  console.log(
-    `⏰ Next post in ${randomMinutes} minutes`
-  );
+  const delay =
+    nextPostTime - Date.now();
 
   setTimeout(
     createPost,
-    randomMinutes * 60 * 1000
+    Math.max(delay, 1000)
   );
+}
+
+function startCountdownLogger() {
+  setInterval(() => {
+    if (!nextPostTime) return;
+
+    const remaining =
+      nextPostTime - Date.now();
+
+    if (remaining <= 0) return;
+
+    const minutes = Math.floor(
+      remaining / 60000
+    );
+
+    const seconds = Math.floor(
+      (remaining % 60000) / 1000
+    );
+
+    console.log(
+      `⏳ Remaining: ${minutes}m ${seconds}s | Next: ${nextPostTimeString}`
+    );
+  }, 10000); // every 30 sec
 }
 
 export function startBackgroundTask() {
@@ -84,5 +150,6 @@ export function startBackgroundTask() {
     "🚀 Auto posting started"
   );
 
+  startCountdownLogger();
   createPost();
 }
