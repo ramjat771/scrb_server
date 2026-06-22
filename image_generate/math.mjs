@@ -1,7 +1,6 @@
 const operators = ["+", "-", "*"];
 
 const emojis = [
-
   "★",
   "◆",
   "●",
@@ -16,8 +15,7 @@ const emojis = [
   "☀",
   "☑",
   "♛",
-  "♚"
-
+  "♚",
 ];
 
 const randomNum = () =>
@@ -25,48 +23,75 @@ const randomNum = () =>
 
 const randomOperator = () =>
   operators[
-    Math.floor(Math.random() * operators.length)
+  Math.floor(Math.random() * operators.length)
   ];
 
 export const getQuestion = () => {
-  let expression = `${randomNum()}`;
+  try {
+    let expression = `${randomNum()}`;
 
-  for (let i = 0; i < 4; i++) {
-    expression += ` ${randomOperator()} ${randomNum()}`;
-  }
+for (let i = 0; i < 4; i++) {
+  expression += ` ${ randomOperator() } ${ randomNum() } `;
+}
 
-  const answer = Math.round(
-    Function(`return (${expression})`)()
+const answer = Number(
+  Math.round(
+    Function(`return (${ expression })`)()
+  )
+);
+
+const uniqueOptions = new Set([
+  answer,
+  answer + 2,
+  answer - 2,
+  answer + 5,
+  answer - 5,
+  answer + 8,
+]);
+
+const options = [...uniqueOptions]
+  .filter((e) => e >= 0)
+  .slice(0, 4);
+
+while (options.length < 4) {
+  options.push(
+    answer + options.length + 10
   );
+}
 
-  const options = [answer];
+for (let i = options.length - 1; i > 0; i--) {
+  const j = Math.floor(
+    Math.random() * (i + 1)
+  );
+  [options[i], options[j]] = [
+    options[j],
+    options[i],
+  ];
+}
 
-  while (options.length < 4) {
-    const wrong =
-      answer +
-      Math.floor(Math.random() * 11) -
-      5;
+return {
+  question: `${ expression } = ?`,
+  optionA: options[0],
+  optionB: options[1],
+  optionC: options[2],
+  optionD: options[3],
+};
 
-    if (
-      !options.includes(wrong) &&
-      wrong >= 0
-    ) {
-      options.push(wrong);
-    }
+
+  } catch (error) {
+    console.error(
+      "Question Generation Error:",
+      error
+    );
+
+return {
+  question: "5 + 3 * 2 = ?",
+  optionA: 11,
+  optionB: 16,
+  optionC: 9,
+  optionD: 13,
+};
+
+
   }
-
-  options.sort(() => Math.random() - 0.5);
-
-  const emoji =
-    emojis[
-      Math.floor(Math.random() * emojis.length)
-    ];
-
-  return {
-    question: `${expression} = ?`,
-    optionA: options[0],
-    optionB: options[1],
-    optionC: options[2],
-    optionD: options[3],
-  };
 };
