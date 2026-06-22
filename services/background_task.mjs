@@ -1,155 +1,201 @@
+import PostSchedule from "../models/post_schedule.model.mjs";
+
 import { getQuestion } from "../image_generate/math.mjs";
 import { generateImageBuffer } from "../image_generate/generate/img_gen.mjs";
 import { uploadBufferToCloudinary } from "../image_generate/upload_to_server.mjs";
 import { postInstagramImage } from "../instagram/instagramPost.service.mjs";
 import { generateCaption } from "../image_generate/caption.mjs";
 import { getIndianDateTime } from "../utils/get_indiatime.mjs";
+import { waitTimeout } from "../utils/wait_timeout.mjs";
 
-let nextPostTime = 0;
-let nextPostTimeString = "";
+let isProcessing = false;
 
-function generateNextSchedule() {
-  const minMinutes = 10;
-  const maxMinutes = 50;
-
-  const randomMinutes =
+function randomMinutes() {
+  return (
     Math.floor(
-      Math.random() *
-        (maxMinutes - minMinutes + 1)
-    ) + minMinutes;
-
-  nextPostTime =
-    Date.now() +
-    randomMinutes * 60 * 1000;
-
-  nextPostTimeString =
-    new Date(nextPostTime).toLocaleString(
-      "en-IN",
-      {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }
-    );
-
-  console.log(
-    `⏰ Next post scheduled at ${nextPostTimeString} IST`
+      Math.random() * 41
+    ) + 10
   );
-
-  return randomMinutes;
 }
 
-async function createPost() {
-  try {
-    console.log("📤 Starting post...");
+async function scheduleNextPost() {
+  const minutes =
+    randomMinutes();
 
-    const {
+  const scheduledAt =
+    new Date(
+      Date.now() +
+      minutes *
+      60 *
+      1000
+    );
+ // immediate
+
+
+  await PostSchedule.create({
+    scheduledAt,
+  });
+
+  console.log(
+    `⏰ Next Post Scheduled: ${scheduledAt}`
+  );
+}
+
+async function acquirePost() {
+  return PostSchedule.findOneAndUpdate(
+    {
+      status: "PENDING",
+      scheduledAt: {
+        $lte: new Date(),
+      },
+    },
+    {
+      status: "PROCESSING",
+    },
+    {
+      sort: {
+        scheduledAt: 1,
+      },
+      returnDocument: "after",
+    }
+  );
+}
+
+async function processPost(
+  schedule
+) {
+  const {
+    question,
+    optionA,
+    optionB,
+    optionC,
+    optionD,
+  } = getQuestion();
+
+  const imageBuffer =
+    generateImageBuffer(
       question,
       optionA,
       optionB,
       optionC,
-      optionD,
-    } = getQuestion();
-
-    const imageBuffer =
-      generateImageBuffer(
-        question,
-        optionA,
-        optionB,
-        optionC,
-        optionD
-      );
-
-    const uploadResult =
-      await uploadBufferToCloudinary(
-        imageBuffer,
-        "social-post"
-      );
-
-    console.log(
-      "✅ Uploaded:",
-      uploadResult.secure_url
+      optionD
     );
 
-    // Schedule next post BEFORE posting
-    const randomMinutes =
-      generateNextSchedule();
+  const upload =
+    await waitTimeout(
+      uploadBufferToCloudinary(
+        imageBuffer,
+        "social-post"
+      ),
+      20000,
+      "Cloudinary timeout"
+    );
 
-    const caption = `
+  const caption = `
 ${getIndianDateTime()}
 
 ${generateCaption()}
-
-⏭ Next Challenge:
-${nextPostTimeString} IST
-(~${randomMinutes} min)
 `;
 
-    const result =
-      await postInstagramImage({
+  const result =
+    await waitTimeout(
+      postInstagramImage({
         caption,
         imageUrl:
-          uploadResult.secure_url,
-      });
+          upload.secure_url,
+      }),
+      20000,
+      "Instagram timeout"
+    );
 
-    if (result.success) {
-      console.log(
-        "✅ Instagram Posted"
-      );
-    } else {
-      console.log(
-        "❌ Instagram Failed",
-        result.error
-      );
-    }
-  } catch (error) {
-    console.log(
-      "❌ Background task error:",
-      error
+  if (!result.success) {
+    throw new Error(
+      result.error ||
+      "Instagram failed"
     );
   }
 
-  const delay =
-    nextPostTime - Date.now();
-
-  setTimeout(
-    createPost,
-    Math.max(delay, 1000)
+  await PostSchedule.findByIdAndUpdate(
+    schedule._id,
+    {
+      status: "SUCCESS",
+      completedAt:
+        new Date(),
+    }
   );
-}
 
-function startCountdownLogger() {
-  setInterval(() => {
-    if (!nextPostTime) return;
-
-    const remaining =
-      nextPostTime - Date.now();
-
-    if (remaining <= 0) return;
-
-    const minutes = Math.floor(
-      remaining / 60000
-    );
-
-    const seconds = Math.floor(
-      (remaining % 60000) / 1000
-    );
-
-    console.log(
-      `⏳ Remaining: ${minutes}m ${seconds}s | Next: ${nextPostTimeString}`
-    );
-  }, 10000); // every 30 sec
-}
-
-export function startBackgroundTask() {
   console.log(
-    "🚀 Auto posting started"
+    "✅ Instagram Posted"
   );
 
-  startCountdownLogger();
-  createPost();
+  await scheduleNextPost();
+}
+
+async function worker() {
+  if (isProcessing) return;
+
+  isProcessing = true;
+
+  try {
+    const schedule =
+      await acquirePost();
+
+  
+if (!schedule) return;
+
+console.log(
+  "📤 Processing Post:",
+  schedule._id
+);
+
+try {
+  await processPost(
+    schedule
+  );
+} catch (error) {
+  console.error(
+    error.message
+  );
+
+  await PostSchedule.findByIdAndUpdate(
+    schedule._id,
+    {
+      status: "PENDING",
+      lastError:
+        error.message,
+      $inc: {
+        retryCount: 1,
+      },
+    }
+  );
+}
+
+
+  } finally {
+    isProcessing = false;
+  }
+}
+
+export async function startBackgroundTask() {
+  const pending =
+    await PostSchedule.countDocuments(
+      {
+        status: "PENDING",
+      }
+    );
+
+  if (!pending) {
+    await scheduleNextPost();
+  }
+
+  setInterval(
+    worker,
+    30000
+  );
+
+  worker();
+
+  console.log(
+    "🚀 Background Worker Started"
+  );
 }
