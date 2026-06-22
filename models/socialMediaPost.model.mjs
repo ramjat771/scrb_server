@@ -1,7 +1,4 @@
-// models/socialMediaPost.model.mjs
-
 import mongoose from "mongoose";
-
 const socialMediaPostSchema = new mongoose.Schema(
   {
     id: {

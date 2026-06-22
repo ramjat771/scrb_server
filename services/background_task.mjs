@@ -1,5 +1,4 @@
 import PostSchedule from "../models/post_schedule.model.mjs";
-
 import { getQuestion } from "../image_generate/math.mjs";
 import { generateImageBuffer } from "../image_generate/generate/img_gen.mjs";
 import { uploadBufferToCloudinary } from "../image_generate/upload_to_server.mjs";
@@ -10,34 +9,26 @@ import { waitTimeout } from "../utils/wait_timeout.mjs";
 
 let isProcessing = false;
 
+const MAX_RETRY_COUNT = 5;
+const WORKER_INTERVAL = 30000;
+
 function randomMinutes() {
-  return (
-    Math.floor(
-      Math.random() * 41
-    ) + 10
-  );
+  return Math.floor(Math.random() * 41) + 10;
 }
 
 async function scheduleNextPost() {
-  const minutes =
-    randomMinutes();
+  const minutes = randomMinutes();
 
-  const scheduledAt =
-    new Date(
-      Date.now() +
-      minutes *
-      60 *
-      1000
-    );
- // immediate
-
+  const scheduledAt = new Date(
+    Date.now() + minutes * 60 * 1000
+  );
 
   await PostSchedule.create({
     scheduledAt,
   });
 
   console.log(
-    `⏰ Next Post Scheduled: ${scheduledAt}`
+    `⏰ Next Post Scheduled: ${scheduledAt.toISOString()}`
   );
 }
 
@@ -61,9 +52,11 @@ async function acquirePost() {
   );
 }
 
-async function processPost(
-  schedule
-) {
+async function processPost(schedule) {
+  console.log(
+    `[${schedule._id}] STEP-1 Generate Question`
+  );
+
   const {
     question,
     optionA,
@@ -71,6 +64,10 @@ async function processPost(
     optionC,
     optionD,
   } = getQuestion();
+
+  console.log(
+    `[${schedule._id}] STEP-2 Generate Image`
+  );
 
   const imageBuffer =
     generateImageBuffer(
@@ -81,15 +78,26 @@ async function processPost(
       optionD
     );
 
-  const upload =
-    await waitTimeout(
-      uploadBufferToCloudinary(
-        imageBuffer,
-        "social-post"
-      ),
-      20000,
-      "Cloudinary timeout"
-    );
+  console.log(
+    `[${schedule._id}] STEP-3 Image Generated (${imageBuffer.length} bytes)`
+  );
+
+  console.log(
+    `[${schedule._id}] STEP-4 Upload Start`
+  );
+
+  const upload = await waitTimeout(
+    uploadBufferToCloudinary(
+      imageBuffer,
+      "social-post"
+    ),
+    30000,
+    "Cloudinary timeout"
+  );
+
+  console.log(
+    `[${schedule._id}] STEP-5 Upload Success`
+  );
 
   const caption = `
 ${getIndianDateTime()}
@@ -97,21 +105,28 @@ ${getIndianDateTime()}
 ${generateCaption()}
 `;
 
-  const result =
-    await waitTimeout(
-      postInstagramImage({
-        caption,
-        imageUrl:
-          upload.secure_url,
-      }),
-      20000,
-      "Instagram timeout"
-    );
+  console.log(
+    `[${schedule._id}] STEP-6 Instagram Start`
+  );
+
+  const result = await waitTimeout(
+    postInstagramImage({
+      caption,
+      imageUrl:
+        upload.secure_url,
+    }),
+    60000,
+    "Instagram timeout"
+  );
+
+  console.log(
+    `[${schedule._id}] STEP-7 Instagram Response`
+  );
 
   if (!result.success) {
     throw new Error(
       result.error ||
-      "Instagram failed"
+      "Instagram publish failed"
     );
   }
 
@@ -119,20 +134,78 @@ ${generateCaption()}
     schedule._id,
     {
       status: "SUCCESS",
-      completedAt:
-        new Date(),
+      completedAt: new Date(),
+      lastError: null,
     }
   );
 
   console.log(
-    "✅ Instagram Posted"
+    `[${schedule._id}] ✅ Post Success`
   );
 
   await scheduleNextPost();
 }
 
+async function handleFailure(
+  schedule,
+  error
+) {
+  const latest =
+    await PostSchedule.findById(
+      schedule._id
+    );
+
+  const retryCount =
+    (latest?.retryCount || 0) + 1;
+
+  console.error(
+    `[${schedule._id}] ❌ Error:`,
+    error.message
+  );
+
+  if (
+    retryCount >=
+    MAX_RETRY_COUNT
+  ) {
+    await PostSchedule.findByIdAndUpdate(
+      schedule._id,
+      {
+        status: "FAILED",
+        retryCount,
+        lastError:
+          error.message,
+      }
+    );
+
+    console.log(
+      `[${schedule._id}] 💀 Marked FAILED`
+    );
+
+    return;
+  }
+
+  await PostSchedule.findByIdAndUpdate(
+    schedule._id,
+    {
+      status: "PENDING",
+      retryCount,
+      lastError:
+        error.message,
+    }
+  );
+
+  console.log(
+    `[${schedule._id}] 🔄 Retry ${retryCount}/${MAX_RETRY_COUNT}`
+  );
+}
+
 async function worker() {
-  if (isProcessing) return;
+  if (isProcessing) {
+    console.log(
+      "⚠ Worker already running"
+    );
+    return;
+  }
 
   isProcessing = true;
 
@@ -140,43 +213,59 @@ async function worker() {
     const schedule =
       await acquirePost();
 
-  
-if (!schedule) return;
-
-console.log(
-  "📤 Processing Post:",
-  schedule._id
-);
-
-try {
-  await processPost(
-    schedule
-  );
-} catch (error) {
-  console.error(
-    error.message
-  );
-
-  await PostSchedule.findByIdAndUpdate(
-    schedule._id,
-    {
-      status: "PENDING",
-      lastError:
-        error.message,
-      $inc: {
-        retryCount: 1,
-      },
+    if (!schedule) {
+      return;
     }
-  );
-}
 
+    console.log(
+      `📤 Processing Post: ${schedule._id}`
+    );
 
+    try {
+      await waitTimeout(
+        processPost(schedule),
+        120000,
+        "Entire process timeout"
+      );
+    } catch (error) {
+      await handleFailure(
+        schedule,
+        error
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Worker Error:",
+      error
+    );
   } finally {
     isProcessing = false;
   }
 }
 
+async function resetStuckJobs() {
+  const result =
+    await PostSchedule.updateMany(
+      {
+        status: "PROCESSING",
+      },
+      {
+        status: "PENDING",
+      }
+    );
+
+  if (
+    result.modifiedCount > 0
+  ) {
+    console.log(
+      `🧹 Recovered ${result.modifiedCount} stuck jobs`
+    );
+  }
+}
+
 export async function startBackgroundTask() {
+  await resetStuckJobs();
+
   const pending =
     await PostSchedule.countDocuments(
       {
@@ -190,7 +279,7 @@ export async function startBackgroundTask() {
 
   setInterval(
     worker,
-    30000
+    WORKER_INTERVAL
   );
 
   worker();

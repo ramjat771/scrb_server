@@ -15,6 +15,7 @@ const postScheduleSchema =
                     "PENDING",
                     "PROCESSING",
                     "SUCCESS",
+                    "FAILED",
                 ],
                 default: "PENDING",
                 index: true,
